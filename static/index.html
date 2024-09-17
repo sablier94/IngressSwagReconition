@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="./static/favicon.ico">
+    <title>Ingress Swag Recognition</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css">
+    <style>
+		body {
+			margin-bottom: 50px;
+		}
+        #video,
+        #canvas {
+            width: 100%;
+            max-width: 640px;
+            height: auto;
+            display: block;
+            margin: auto;
+            border-color: teal;
+            border-style: outset;
+            border-width: medium;
+            max-height: 70%;
+            position: relative;
+        }
+        #canvas {
+            display: none;
+        }
+        #target {
+            position: absolute;
+            top: 10%;
+            left: 20%;
+            width: 60%;
+            height: 80%;
+            border: 2px solid red;
+            box-sizing: border-box;
+            pointer-events: none;
+        }
+        .accordion-button::after {
+            content: '';
+            float: right;
+        }
+        .accordion-button.collapsed::after {
+            content: '';
+        }
+        .accordion-button i {
+            margin-right: 8px;
+        }
+        .accordion-button {
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+            color: gray;
+            text-align: left;
+            text-decoration: none;
+            background-color: #FAFAFA;
+        }
+        .accordion-button:hover {
+            background-color: #F5F5F5;
+            text-decoration: none;
+            color: black;
+        }
+        .accordion-button.collapsed {
+            color: gray;
+        }
+        .accordion-button:not(.collapsed) {
+            color: darkblue;
+        }
+        .accordion-body {
+            padding: 20px;
+        }
+        #btn-file:hover {
+            cursor: pointer;
+        }
+        .btn-file {
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-file input[type="file"] {
+			position: absolute;
+			top: 0;
+			right: 0;
+			min-width: 100%;
+			min-height: 100%;
+			font-size: 100px;
+			text-align: right;
+			filter: alpha(opacity=0);
+			opacity: 0;
+			outline: none;
+			background: white;
+			cursor: inherit;
+			display: block;
+		}
+        .result-buttons {
+            margin-top: 20px;
+            display: none;
+        }
+        .result-buttons .btn {
+            margin: 0 10px;
+        }
+        #thank-you-message {
+            display: none;
+            margin-top: 20px;
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1 class="text-center mt-4">Machine Learning Prototype</h1>
+        <div class="accordion" id="accordionMain">
+            <div class="card" id="cardUpload">
+                <button class="btn btn-link accordion-button" type="button" data-toggle="collapse" data-target="#collapseOne"
+                    aria-expanded="true" aria-controls="collapseOne">
+                    <i class="bi bi-upload"></i> Upload Image
+                </button>
+                <div id="collapseOne" class="collapse show" aria-labelledby="headingOne" data-parent="#accordionMain">
+                    <div class="card-body">
+					<label id="choose-file-btn" class="btn btn-primary btn-file">
+						Choose File
+						<input type="file" id="file-input" accept="image/*">
+					</label>
+				</div>
+                </div>
+            </div>
+            <div class="card" id="cardCamera">
+                <button class="btn btn-link accordion-button collapsed" type="button" data-toggle="collapse" data-target="#collapseTwo"
+                    aria-expanded="false" aria-controls="collapseTwo">
+                    <i class="bi bi-camera"></i> Camera
+                </button>
+                <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-parent="#accordionMain">
+                    <div class="card-body">
+                        <div class="text-center">
+                            <div style="position: relative;">
+                                <video id="video" autoplay></video>
+                                <div id="target"></div>
+                                <canvas id="canvas"></canvas>
+                            </div>
+                        </div>
+                        <div id="camera-controls" class="text-center mt-3">
+                            <button id="start-camera" class="btn btn-secondary">Start Camera</button>
+                            <button id="capture" class="btn btn-secondary" style="display:none">Take Picture & Analyze</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Result area for both upload and camera -->
+        <div id="result" class="text-center mt-4">
+            <div id="upload-result" class="text-center mt-3"></div>
+            <div id="upload-error" class="text-danger text-center"></div>
+            <div id="camera-error" class="text-danger text-center mt-3"></div>
+        </div>
+
+        <!-- Result Buttons (now persistent, but hidden initially) -->
+        <div class="text-center result-buttons">
+            <button id="correct-button" class="btn btn-success">Correct</button>
+            <button id="incorrect-button" class="btn btn-danger">Incorrect</button>
+            <button id="unsure-button" class="btn btn-secondary">Unsure</button>
+        </div>
+		<div id="patch-selection" class="text-center" style="display: none;">
+			<label for="patch-options">Select the correct patch:</label>
+			<select id="patch-options" class="form-control" style="display: inline-block; width: auto; margin: 10px;">
+				<!-- Options will be populated dynamically -->
+			</select>
+			<button id="submit-correction" class="btn btn-primary">Submit Correction</button>
+		</div>
+
+        <!-- Thank you message -->
+        <div id="thank-you-message" class="text-center">Thank you for your feedback!</div>
+    </div>
+
+    <!-- Bootstrap and JavaScript -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const startCameraButton = document.getElementById('start-camera');
+        const captureButton = document.getElementById('capture');
+        const resultDiv = document.getElementById('result');
+        const cameraErrorDiv = document.getElementById('camera-error');
+        const uploadResultDiv = document.getElementById('upload-result');
+        const uploadErrorDiv = document.getElementById('upload-error');
+        const fileInput = document.getElementById('file-input');
+        const resultButtonsDiv = document.querySelector('.result-buttons');
+        const thankYouMessageDiv = document.getElementById('thank-you-message');
+
+        let scanId; // This will store the scan ID (image filename) for later use
+        let classification; // This will store the class ID of current scan for later use
+
+        document.getElementById('collapseTwo').addEventListener('show.bs.collapse', () => {
+            startCamera();
+        });
+
+        async function startCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: { ideal: 720 }, height: { ideal: 720 }, facingMode: { ideal: "environment" } }
+                });
+                video.srcObject = stream;
+                video.play();
+                video.style.display = 'block';
+                canvas.style.display = 'none';
+                captureButton.style.display = 'block';
+                startCameraButton.style.display = 'none';
+            } catch (err) {
+                console.error('Error accessing camera: ', err);
+                cameraErrorDiv.textContent = 'Error accessing camera.';
+            }
+        }
+
+        startCameraButton.addEventListener('click', startCamera);
+
+        captureButton.addEventListener('click', async () => {
+            resultDiv.textContent = 'Uploading image...';
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 1.0);
+            const base64Data = dataUrl.split(',')[1];
+
+            video.style.display = 'none';
+            canvas.style.display = 'block';
+            stream.getTracks().forEach(track => track.stop());
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ image: base64Data })
+                });
+
+                if (!response.ok) throw new Error('Failed to upload image.');
+
+                const result = await response.json();
+                scanId = result.scanid; // Store the scanId for later use
+                classification = result.class; // Store the class for later use
+                resultDiv.innerHTML = "Patch detected: <strong>" + classification + "</strong>" + " with " + result.probability + "% confidence.";
+                resultButtonsDiv.style.display = 'block'; // Show result buttons
+            } catch (error) {
+                console.error('Error:', error);
+                resultDiv.textContent = 'Error: ' + error.message;
+            }
+
+            captureButton.style.display = 'none';
+            startCameraButton.textContent = 'Scan again';
+            startCameraButton.style.display = 'block';
+        });
+
+        fileInput.addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const dataUrl = e.target.result;
+                    const base64Data = dataUrl.split(',')[1];
+
+                    uploadResultDiv.textContent = 'Uploading image...';
+
+                    try {
+                        const response = await fetch('/predict', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ image: base64Data })
+                        });
+
+                        if (!response.ok) throw new Error('Failed to upload image.');
+
+                        const result = await response.json();
+                        scanId = result.scanid; // Store the scanId for later use
+                        classification = result.class; // Store the class for later use
+                        uploadResultDiv.innerHTML = "Patch detected: <strong>" + classification + "</strong>" + " with " + result.probability + "% confidence.";
+                        resultButtonsDiv.style.display = 'block'; // Show result buttons
+                    } catch (error) {
+                        console.error('Error:', error);
+                        uploadResultDiv.textContent = 'Error: ' + error.message;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('correct-button').addEventListener('click', () => {
+            sendApproval(true);
+        });
+
+        document.getElementById('incorrect-button').addEventListener('click', () => {
+			document.getElementById('patch-selection').style.display = 'block'; // Show the patch selection
+			resultButtonsDiv.style.display = 'none'; // Hide the result buttons
+		});
+		
+		document.getElementById('unsure-button').addEventListener('click', () => {
+            resultButtonsDiv.style.display = 'none'; // Hide buttons
+			thankYouMessageDiv.style.display = 'block'; // Show thank you message
+        });
+		
+		document.getElementById('submit-correction').addEventListener('click', async () => {
+			classification = document.getElementById('patch-options').value;
+			sendApproval(true);
+			document.getElementById('patch-selection').style.display = 'none'; // Hide the patch selection
+		});
+		
+		document.addEventListener('DOMContentLoaded', async () => {
+			try {
+				const response = await fetch('/getclasses');
+				if (!response.ok) throw new Error('Failed to fetch classes.');
+
+				const data = await response.json();
+				const patchOptions = document.getElementById('patch-options');
+
+				// Clear any existing options
+				patchOptions.innerHTML = '';
+
+				// Add new options
+				data.classes.forEach(cls => {
+					const option = document.createElement('option');
+					option.value = cls;
+					option.textContent = cls;
+					patchOptions.appendChild(option);
+				});
+			} catch (error) {
+				console.error('Error fetching classes:', error);
+			}
+		});
+
+        async function sendApproval(isCorrect) {
+            const endpoint = isCorrect ? '/approve' : '/reject';
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ scanid: scanId, class: classification })
+                });
+
+                if (!response.ok) throw new Error('Failed to submit feedback.');
+
+                resultButtonsDiv.style.display = 'none'; // Hide buttons
+                thankYouMessageDiv.style.display = 'block'; // Show thank you message
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+
+</html>
